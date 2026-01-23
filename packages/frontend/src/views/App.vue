@@ -391,23 +391,22 @@ onMounted(async () => {
         <!-- Main Panel: Details -->
         <SplitterPanel :size="75" :minSize="40" class="flex flex-col bg-surface-900 relative">
             <div v-if="selectedOperation" class="absolute inset-0 flex flex-col">
-                <!-- Operation Header -->
-                <div class="bg-surface-800 border-b border-surface-700 px-6 pt-6 pb-0 shadow-sm shrink-0">
-                    <div class="flex items-start justify-between mb-6">
-                        <div class="flex-1 min-w-0 mr-4">
-                            <h2 class="text-xl font-bold text-surface-50 break-all mb-1">{{ selectedOperation.name }}</h2>
-                            <p class="font-mono text-xs text-surface-400 break-all opacity-80 select-all">{{ selectedOperation.signature }}</p>
+                <Tabs v-model:value="activeTab" class="flex flex-col h-full">
+                    <!-- Operation Header -->
+                    <div class="bg-surface-800 border-b border-surface-700 px-6 pt-6 pb-0 shadow-sm shrink-0">
+                        <div class="flex items-start justify-between mb-6">
+                            <div class="flex-1 min-w-0 mr-4">
+                                <h2 class="text-xl font-bold text-surface-50 break-all mb-1">{{ selectedOperation.name }}</h2>
+                            </div>
+                            <div class="flex items-start gap-2 shrink-0">
+                                <ExportMenu
+                                    :operation="selectedOperation"
+                                    @toast="showToast"
+                                />
+                            </div>
                         </div>
-                        <div class="flex items-start gap-2 shrink-0">
-                            <ExportMenu
-                                :operation="selectedOperation"
-                                @toast="showToast"
-                            />
-                        </div>
-                    </div>
-                    
-                    <!-- PrimeVue Tabs -->
-                    <Tabs v-model:value="activeTab">
+                        
+                        <!-- PrimeVue Tabs -->
                         <TabList class="!border-b-0 !p-0 gap-4">
                             <Tab value="overview" class="!px-4 !py-3 !font-medium">Overview</Tab>
                             <Tab value="requests" class="!px-4 !py-3 !font-medium">
@@ -415,12 +414,10 @@ onMounted(async () => {
                             </Tab>
                             <Tab value="raw" class="!px-4 !py-3 !font-medium">Raw HTTP</Tab>
                         </TabList>
-                    </Tabs>
-                </div>
+                    </div>
 
-                <!-- Tab Content -->
-                <div class="flex-1 min-h-0 overflow-hidden bg-surface-900">
-                    <TabPanels class="h-full !p-0">
+                    <!-- Tab Content -->
+                    <TabPanels class="flex-1 min-h-0 overflow-hidden bg-surface-900 !p-0">
                         <!-- Overview Tab -->
                         <TabPanel value="overview" class="h-full !p-0">
                             <Splitter class="h-full border-none bg-transparent">
@@ -467,7 +464,7 @@ onMounted(async () => {
                              </Splitter>
                         </TabPanel>
                     </TabPanels>
-                </div>
+                </Tabs>
             </div>
             
             <div v-else class="h-full flex items-center justify-center p-8 bg-surface-50/5 dark:bg-surface-900">
