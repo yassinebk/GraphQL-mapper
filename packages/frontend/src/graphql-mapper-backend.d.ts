@@ -65,6 +65,10 @@ declare module 'graphql-mapper-backend' {
     responseText?: string;
   };
 
+  export type PassiveScanStatus = {
+    enabled: boolean;
+  };
+
   export type API = {
     extractInScopeRequests: (options?: {
       pageSize?: number;
@@ -76,6 +80,8 @@ declare module 'graphql-mapper-backend' {
     getExtractionStatus: () => Promise<Result<ExtractionStatus>>;
     getModel: () => Promise<Result<GraphQLModel>>;
     getRequestDetails: (requestId: string) => Promise<Result<RequestDetails>>;
+    setPassiveScan: (enabled: boolean) => Promise<Result<PassiveScanStatus>>;
+    getPassiveScanStatus: () => Promise<Result<PassiveScanStatus>>;
     onEvent: (event: "graphql-mapper.data-changed", callback: () => void) => void;
   };
 }

@@ -507,6 +507,141 @@ let currentModel: GraphQLModel | null = null;
 
 let sdkInstance: SDK | null = null;
 
+// Passive scan settings
+let passiveScanEnabled = false;
+
+const setPassiveScan = (enabled: boolean) => {
+  passiveScanEnabled = enabled;
+  if (sdkInstance) {
+    sdkInstance.console.log(`[GraphQL mapper] Passive scan ${enabled ? 'enabled' : 'disabled'}`);
+  }
+  return ok({ enabled: passiveScanEnabled });
+};
+
+const getPassiveScanStatus = () => ok({ enabled: passiveScanEnabled });
+
+const processPassiveRequest = async (
+  sdk: SDK,
+  request: Request,
+  response?: Response
+): Promise<void> => {
+  if (!passiveScanEnabled) {
+    return;
+  }
+
+  try {
+    // Check if request is in scope
+    const inScope = sdk.requests.inScope(request);
+    if (!inScope) {
+      return;
+    }
+
+    const parsedRequest = parseGraphQLRequest(request);
+    if (!parsedRequest.payload) {
+      return;
+    }
+
+    const requestId = request.getId();
+
+    // Initialize or get existing model
+    const operations = new Map<string, OperationState>();
+    const requestSummaries = new Map<string, RequestSummary>();
+
+    if (currentModel) {
+      for (const summary of currentModel.operations) {
+        operations.set(summary.signature, operationStateFromSummary(summary));
+      }
+      for (const summary of currentModel.requests) {
+        requestSummaries.set(summary.id, summary);
+      }
+    }
+
+    // Check if we already processed this request
+    if (requestSummaries.has(requestId)) {
+      return;
+    }
+
+    // Add request summary
+    requestSummaries.set(requestId, {
+      id: requestId,
+      method: request.getMethod(),
+      url: request.getUrl(),
+      host: request.getHost(),
+      path: request.getPath(),
+      createdAt: request.getCreatedAt().toISOString(),
+    });
+
+    let operationsForRequest: {
+      kind: GraphQLKind;
+      name: string;
+      variables: OperationVariable[];
+      fieldPaths: string[];
+    }[] = [];
+
+    try {
+      operationsForRequest = parseOperations(parsedRequest.payload.query);
+    } catch (error) {
+      sdk.console.error(
+        `[GraphQL mapper] Failed to parse GraphQL request ${requestId}: ${String(error)}`
+      );
+      return;
+    }
+
+    if (operationsForRequest.length === 0) {
+      return;
+    }
+
+    const responseData = parseResponseJson(response);
+    const responseTypes = responseData
+      ? collectResponseFieldTypes(responseData)
+      : undefined;
+
+    for (const operation of operationsForRequest) {
+      const signature = signatureForOperation(operation);
+      const existing = operations.get(signature);
+      if (!existing) {
+        const state = createOperationState(operation, requestId);
+        if (responseTypes) {
+          mergeFieldTypes(state.fieldTypes, responseTypes);
+        }
+        operations.set(signature, state);
+      } else {
+        updateOperationState(existing, requestId, responseTypes);
+      }
+    }
+
+    // Update model
+    const updatedAt = new Date().toISOString();
+    const newCounts = currentModel?.counts ?? emptyCounts();
+    newCounts.graphql += 1;
+    newCounts.deduped = operations.size;
+
+    currentModel = {
+      operations: Array.from(operations.values())
+        .map(buildOperationSummary)
+        .sort((left, right) => left.name.localeCompare(right.name)),
+      requests: Array.from(requestSummaries.values()).sort((left, right) =>
+        left.createdAt.localeCompare(right.createdAt)
+      ),
+      counts: newCounts,
+      updatedAt,
+    };
+
+    // Emit event to notify frontend
+    if (sdkInstance) {
+      (sdkInstance.api as any).send("graphql-mapper.data-changed", {});
+    }
+
+    sdk.console.debug(
+      `[GraphQL mapper] Passive scan processed GraphQL request: ${request.getMethod()} ${request.getUrl()}`
+    );
+  } catch (error) {
+    sdk.console.error(
+      `[GraphQL mapper] Passive scan error: ${String(error)}`
+    );
+  }
+};
+
 const extractInScopeRequests = async (
   sdk: SDK,
   options?: ExtractionOptions
@@ -860,6 +995,8 @@ export type API = DefineAPI<{
   getExtractionStatus: typeof getExtractionStatus;
   getModel: typeof getModel;
   getRequestDetails: typeof getRequestDetails;
+  setPassiveScan: typeof setPassiveScan;
+  getPassiveScanStatus: typeof getPassiveScanStatus;
 }>;
 
 export type {
@@ -883,4 +1020,13 @@ export function init(sdk: SDK<API>) {
   sdk.api.register("getExtractionStatus", getExtractionStatus);
   sdk.api.register("getModel", getModel);
   sdk.api.register("getRequestDetails", getRequestDetails);
+  sdk.api.register("setPassiveScan", (sdk, enabled: boolean) => setPassiveScan(enabled));
+  sdk.api.register("getPassiveScanStatus", (sdk) => getPassiveScanStatus());
+
+  // Register response interceptor for passive scanning
+  sdk.events.onInterceptResponse(async (eventSdk, request, response) => {
+    await processPassiveRequest(eventSdk, request, response);
+  });
+
+  sdk.console.log("[GraphQL mapper] Plugin initialized");
 }

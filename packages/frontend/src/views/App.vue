@@ -9,6 +9,7 @@ import Tabs from "primevue/tabs";
 import Tag from "primevue/tag";
 import Splitter from "primevue/splitter";
 import SplitterPanel from "primevue/splitterpanel";
+import InputSwitch from "primevue/inputswitch";
 import { computed, onMounted, ref, watch } from "vue";
 
 import EmptyState from "@/components/EmptyState.vue";
@@ -40,6 +41,7 @@ const requestDetails = ref<RequestDetails | null>(null);
 const filterText = ref("");
 const filterKind = ref<"all" | "query" | "mutation" | "subscription">("all");
 const activeTab = ref("overview");
+const passiveScanEnabled = ref(false);
 
 const requestEditorContainer = ref<HTMLDivElement | null>(null);
 const responseEditorContainer = ref<HTMLDivElement | null>(null);
@@ -293,6 +295,36 @@ const refreshData = async () => {
   await loadModel();
 };
 
+const loadPassiveScanStatus = async () => {
+  const result = await sdk.backend.getPassiveScanStatus();
+  const resolved = unwrapResult(result);
+  if (resolved) {
+    passiveScanEnabled.value = resolved.enabled;
+  }
+};
+
+const togglePassiveScan = async () => {
+  const newValue = passiveScanEnabled.value;
+  const result = await sdk.backend.setPassiveScan(newValue);
+  const resolved = unwrapResult(result);
+  if (resolved) {
+    showToast(
+      `Passive scan ${resolved.enabled ? 'enabled' : 'disabled'}`,
+      "success"
+    );
+  } else {
+    // Revert on error
+    passiveScanEnabled.value = !newValue;
+  }
+};
+
+watch(passiveScanEnabled, async (newValue, oldValue) => {
+  // Skip initial load
+  if (oldValue !== undefined && newValue !== oldValue) {
+    await togglePassiveScan();
+  }
+});
+
 onMounted(async () => {
   const request = sdk.ui.httpRequestEditor();
   const response = sdk.ui.httpResponseEditor();
@@ -307,6 +339,7 @@ onMounted(async () => {
   }
 
   await refreshData();
+  await loadPassiveScanStatus();
 
   // Listen for backend data-changed events
   sdk.backend.onEvent("graphql-mapper.data-changed", async () => {
@@ -338,7 +371,16 @@ onMounted(async () => {
             Last: {{ status.startedAt }}
         </div>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 bg-surface-700/50 px-3 py-1.5 rounded">
+          <label for="passive-scan-toggle" class="text-xs text-surface-300 cursor-pointer">
+            Passive Scan
+          </label>
+          <InputSwitch
+            id="passive-scan-toggle"
+            v-model="passiveScanEnabled"
+          />
+        </div>
         <Tag
             v-if="status?.state"
             :value="status.state"
