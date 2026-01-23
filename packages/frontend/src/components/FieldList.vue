@@ -1,13 +1,31 @@
 <script setup lang="ts">
 import type { OperationSummary } from "@/types";
-import DataTable from "primevue/datatable";
-import Column from "primevue/column";
 import Card from "primevue/card";
 import EmptyState from "./EmptyState.vue";
+import { computed } from "vue";
 
-defineProps<{
+const props = defineProps<{
   operation: OperationSummary | null | undefined;
 }>();
+
+const formattedFields = computed(() => {
+  if (!props.operation || props.operation.fields.length === 0) {
+    return [];
+  }
+  
+  return props.operation.fields.map((field: { path: string; inferredType?: string }) => {
+    const parts = field.path.split(".");
+    const fieldName = parts[parts.length - 1];
+    const indentLevel = parts.length - 1;
+    const type = field.inferredType || "Unknown";
+    
+    return {
+      fieldName,
+      type,
+      indentLevel,
+    };
+  });
+});
 </script>
 
 <template>
@@ -22,35 +40,15 @@ defineProps<{
     </template>
     <template #content>
       <div v-if="operation" class="h-full flex flex-col overflow-hidden">
-        <DataTable
-            v-if="operation.fields.length > 0"
-            :value="operation.fields"
-            scrollable
-            scrollHeight="flex"
-            stripedRows
-            class="p-datatable-sm border-none flex-1"
-            :pt="{
-                table: { style: 'min-width: 100%' },
-                bodyRow: { class: 'text-sm' },
-                headerRow: { class: 'text-xs uppercase text-surface-400' }
-            }"
-        >
-          <Column field="path" header="Path" class="font-mono">
-            <template #body="{ data }">
-              <div class="flex items-center gap-2">
-                <i class="fas fa-database text-surface-500 text-xs" />
-                <span class="truncate">{{ data.path }}</span>
-              </div>
-            </template>
-          </Column>
-          <Column field="inferredType" header="Type" class="font-mono w-[120px]">
-             <template #body="{ data }">
-                <span v-if="data.inferredType" class="text-surface-300">
-                  {{ data.inferredType }}
-                </span>
-             </template>
-          </Column>
-        </DataTable>
+        <div v-if="operation.fields.length > 0" class="flex-1 overflow-auto p-4">
+          <div class="font-mono text-sm bg-surface-950 p-4 rounded-lg border border-surface-700">
+            <div v-for="(field, index) in formattedFields" :key="index" class="leading-relaxed">
+              <span :style="{ paddingLeft: `${field.indentLevel * 1.5}rem` }">
+                <span class="text-cyan-400">{{ field.fieldName }}</span><span class="text-surface-500">:</span> <span class="text-amber-400">{{ field.type }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
         
         <div v-else class="flex-1 flex flex-col items-center justify-center p-4">
             <EmptyState

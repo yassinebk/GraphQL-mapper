@@ -1,5 +1,5 @@
 {
-  "name": "backend",
+  "name": "graphql-mapper-backend",
   "version": "0.0.0",
   "type": "module",
   "types": "src/index.ts",

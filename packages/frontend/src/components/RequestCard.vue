@@ -8,6 +8,7 @@ defineProps<{
 
 const emit = defineEmits<{
   select: [requestId: string];
+  details: [requestId: string];
 }>();
 
 const getMethodColor = (method: string) => {
@@ -23,14 +24,18 @@ const getMethodColor = (method: string) => {
 </script>
 
 <template>
-  <button
+  <div
     class="w-full text-left rounded-lg p-3 transition-all border group flex items-center gap-3"
     :class="[
       isActive 
         ? 'bg-surface-800 border-primary-500/50 shadow-sm' 
         : 'bg-surface-800/40 border-surface-700/50 hover:bg-surface-800 hover:border-surface-600'
     ]"
+    role="button"
+    tabindex="0"
     @click="emit('select', request.id)"
+    @keydown.enter.prevent="emit('select', request.id)"
+    @keydown.space.prevent="emit('select', request.id)"
   >
     <!-- Method Badge -->
     <div 
@@ -48,9 +53,17 @@ const getMethodColor = (method: string) => {
         <p class="text-xs text-surface-500 truncate font-mono opacity-80">{{ request.url }}</p>
     </div>
 
+    <button
+      type="button"
+      class="shrink-0 px-2 py-1 text-[10px] font-semibold rounded border border-surface-600 text-surface-200 hover:text-surface-50 hover:border-surface-500 hover:bg-surface-700/60 transition-colors"
+      @click.stop="emit('details', request.id)"
+    >
+      Details
+    </button>
+
     <!-- Active Indicator -->
     <div class="shrink-0 text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity" :class="{ 'opacity-100': isActive }">
         <i class="fas fa-chevron-right text-xs"></i>
     </div>
-  </button>
+  </div>
 </template>

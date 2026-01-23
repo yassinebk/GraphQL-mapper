@@ -77,7 +77,7 @@ const exportSignature = () => {
 const exportFields = () => {
   if (!props.operation) return;
   const fields = props.operation.fields
-    .map((f) => `${f.path}: ${f.inferredType || "unknown"}`)
+    .map((f: { path: string; inferredType?: string }) => `${f.path}: ${f.inferredType || "unknown"}`)
     .join("\n");
   copyToClipboard(fields, "Fields");
 };
@@ -85,7 +85,7 @@ const exportFields = () => {
 const exportVariables = () => {
   if (!props.operation) return;
   const variables = props.operation.variables
-    .map((v) => `$${v.name}: ${v.type}`)
+    .map((v: { name: string; type: string }) => `$${v.name}: ${v.type}`)
     .join("\n");
   copyToClipboard(variables || "No variables", "Variables");
 };

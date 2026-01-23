@@ -7,7 +7,7 @@ import type {
   RequestDetails,
   RequestSummary,
   Result,
-} from "backend";
+} from "graphql-mapper-backend";
 
 export type FrontendSDK = Caido<API, Record<string, never>>;
 

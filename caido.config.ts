@@ -7,16 +7,15 @@ import tailwindCaido from "@caido/tailwindcss";
 import path from "path";
 import prefixwrap from "postcss-prefixwrap";
 
-const id = "frontend-vue";
+const id = "graphql-mapper";
 export default defineConfig({
   id,
-  name: "Frontend Vue",
-  description: "Plugin template with frontend using VueJS",
-  version: "0.0.0",
+  name: "GraphQL Mapper",
+  description: "Map GraphQL operations from proxy history",
+  version: "0.1.0",
   author: {
-    name: "Caido Labs Inc.",
-    email: "dev@caido.io",
-    url: "https://caido.io",
+    name: "fir3cr4ckers",
+    url: "https://github.com/yassinebk",
   },
   plugins: [
     {
@@ -36,16 +35,16 @@ export default defineConfig({
         build: {
           rollupOptions: {
             external: [
-              '@caido/frontend-sdk', 
-              "@codemirror/autocomplete", 
-              "@codemirror/commands", 
-              "@codemirror/language", 
-              "@codemirror/lint", 
-              "@codemirror/search", 
-              "@codemirror/state", 
-              "@codemirror/view", 
-              "@lezer/common", 
-              "@lezer/highlight", 
+              '@caido/frontend-sdk',
+              "@codemirror/autocomplete",
+              "@codemirror/commands",
+              "@codemirror/language",
+              "@codemirror/lint",
+              "@codemirror/search",
+              "@codemirror/state",
+              "@codemirror/view",
+              "@lezer/common",
+              "@lezer/highlight",
               "@lezer/lr",
               "vue",
 

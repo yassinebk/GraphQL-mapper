@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Tag from "primevue/tag";
 import type { OperationSummary } from "@/types";
 
 defineProps<{

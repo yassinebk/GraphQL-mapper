@@ -55,14 +55,17 @@ const hasModel = computed(() => (model.value?.operations.length ?? 0) > 0);
 
 const filteredOperations = computed(() => {
   const operations = model.value?.operations ?? [];
-  return operations.filter((operation) => {
+  const filteredOperations =operations.filter((operation: OperationSummary) => {
     const matchesKind =
-      filterKind.value === "all" || operation.kind === filterKind.value;
+      filterKind.value === "all" || operation.kind.toLowerCase() === filterKind.value;
+
     const matchesText =
       filterText.value.trim().length === 0 ||
       operation.name.toLowerCase().includes(filterText.value.toLowerCase());
     return matchesKind && matchesText;
   });
+
+  return filteredOperations;
 });
 
 const selectedOperation = computed(() => {
@@ -70,7 +73,7 @@ const selectedOperation = computed(() => {
     return null;
   }
   return model.value.operations.find(
-    (operation) => operation.id === selectedOperationId.value
+    (operation: OperationSummary) => operation.id === selectedOperationId.value
   );
 });
 
@@ -87,20 +90,8 @@ const selectedRequests = computed(() => {
     return [];
   }
   return selectedOperation.value.requestIds
-    .map((id) => requestLookup.value.get(id))
-    .filter((entry): entry is RequestSummary => Boolean(entry));
-});
-
-const selectionStats = computed(() => {
-  const summary = selectedOperation.value;
-  if (!summary) {
-    return null;
-  }
-  return {
-    fields: summary.fields.length,
-    variables: summary.variables.length,
-    requests: summary.requestIds.length,
-  };
+    .map((id: string) => requestLookup.value.get(id))
+    .filter((entry: RequestSummary | undefined): entry is RequestSummary => Boolean(entry));
 });
 
 const showToastError = (message: string) => {
@@ -126,7 +117,10 @@ const setEditorText = (
   if (!editor) {
     return;
   }
-  const view = editor.getEditorView();
+  const view = editor.getEditorView?.();
+  if (!view) {
+    return;
+  }
   view.dispatch({
     changes: {
       from: 0,
@@ -143,7 +137,10 @@ const setResponseText = (
   if (!editor) {
     return;
   }
-  const view = editor.getEditorView();
+  const view = editor.getEditorView?.();
+  if (!view) {
+    return;
+  }
   view.dispatch({
     changes: {
       from: 0,
@@ -168,9 +165,6 @@ const loadModel = async () => {
     return;
   }
   model.value = resolved;
-  if (!selectedOperationId.value && resolved.operations.length > 0) {
-    selectedOperationId.value = resolved.operations[0]?.id ?? null;
-  }
 };
 
 const refreshExtraction = async () => {
@@ -213,12 +207,17 @@ const selectRequest = (requestId: string) => {
   selectedRequestId.value = requestId;
 };
 
+const openRequestDetails = (requestId: string) => {
+  selectedRequestId.value = requestId;
+  activeTab.value = "raw";
+};
+
 const navigateOperations = (direction: "next" | "prev") => {
   const operations = filteredOperations.value;
   if (operations.length === 0) return;
   
   const currentIndex = operations.findIndex(
-    (op) => op.id === selectedOperationId.value
+    (op: OperationSummary) => op.id === selectedOperationId.value
   );
   
   if (currentIndex === -1) {
@@ -268,6 +267,8 @@ watch(selectedOperation, (operation) => {
   selectedRequestId.value = operation.requestIds[0] ?? null;
 });
 
+
+
 watch(selectedRequestId, async (requestId) => {
   if (!requestId) {
     requestDetails.value = null;
@@ -287,6 +288,11 @@ watch(requestDetails, (details) => {
   );
 });
 
+const refreshData = async () => {
+  await loadStatus();
+  await loadModel();
+};
+
 onMounted(async () => {
   const request = sdk.ui.httpRequestEditor();
   const response = sdk.ui.httpResponseEditor();
@@ -300,8 +306,25 @@ onMounted(async () => {
     responseEditorContainer.value.appendChild(response.getElement());
   }
 
-  await loadStatus();
-  await loadModel();
+  await refreshData();
+
+  // Listen for backend data-changed events
+  sdk.backend.onEvent("graphql-mapper.data-changed", async () => {
+    await refreshData();
+  });
+
+  // Poll for updates every 2 seconds when status is running
+  const pollInterval = setInterval(async () => {
+    const currentStatus = status.value?.state;
+    if (currentStatus === "running") {
+      await refreshData();
+    }
+  }, 2000);
+  
+  // Cleanup on unmount
+  return () => {
+    clearInterval(pollInterval);
+  };
 });
 </script>
 
@@ -339,11 +362,11 @@ onMounted(async () => {
 
     <!-- Main Content Splitter -->
     <main class="flex-1 min-h-0 overflow-hidden relative">
-      <Splitter class="h-full border-none bg-transparent" stateKey="main-layout" stateStorage="local">
+      <Splitter class="h-full border-none bg-transparent !overflow-hidden" stateKey="main-layout" stateStorage="local">
         
         <!-- Sidebar: Operations List -->
-        <SplitterPanel :size="25" :minSize="20" class="flex flex-col bg-surface-800/30 border-r border-surface-700">
-            <div class="p-3 border-b border-surface-700 bg-surface-800/50">
+        <SplitterPanel :size="25" :minSize="20" class="flex flex-col bg-surface-800/30 border-r border-surface-700 overflow-hidden">
+            <div class="p-3 border-b border-surface-700 bg-surface-800/50 shrink-0">
               <OperationSearch
                 v-model="filterText"
                 :filter-kind="filterKind"
@@ -389,7 +412,7 @@ onMounted(async () => {
         </SplitterPanel>
 
         <!-- Main Panel: Details -->
-        <SplitterPanel :size="75" :minSize="40" class="flex flex-col bg-surface-900 relative">
+        <SplitterPanel :size="75" :minSize="40" class="flex flex-col bg-surface-900 relative overflow-hidden">
             <div v-if="selectedOperation" class="absolute inset-0 flex flex-col">
                 <Tabs v-model:value="activeTab" class="flex flex-col h-full">
                     <!-- Operation Header -->
@@ -439,6 +462,7 @@ onMounted(async () => {
                                     :request="request"
                                     :is-active="request.id === selectedRequestId"
                                     @select="selectRequest"
+                                    @details="openRequestDetails"
                                 />
                                 <div v-if="selectedRequests.length === 0" class="mt-8">
                                      <EmptyState
