@@ -41,6 +41,9 @@ importers:
 
   packages/backend:
     dependencies:
+      '@graphql-mapper/shared':
+        specifier: workspace:*
+        version: link:../shared
       graphql:
         specifier: 16.8.1
         version: 16.8.1
@@ -54,6 +57,9 @@ importers:
       '@caido/primevue':
         specifier: 0.1.2
         version: 0.1.2
+      '@graphql-mapper/shared':
+        specifier: workspace:*
+        version: link:../shared
       primevue:
         specifier: 4.1.0
         version: 4.1.0(vue@3.4.37(typescript@5.5.4))
@@ -70,12 +76,18 @@ importers:
       '@codemirror/view':
         specifier: 6.28.1
         version: 6.28.1
-      backend:
+      graphql-mapper-backend:
         specifier: workspace:*
         version: link:../backend
       vue-tsc:
         specifier: 2.0.29
         version: 2.0.29(typescript@5.5.4)
+
+  packages/shared:
+    devDependencies:
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
 
 packages:
 
