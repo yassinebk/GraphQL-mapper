@@ -1,7 +1,16 @@
 {
   "name": "graphql-mapper",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
+  "author": {
+    "name": "fir3cr4ckers",
+    "email": "fir3cr4ckers@proton.me"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fir3cr4ckers/GraphQL-mapper.git"
+  },
   "scripts": {
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint ./packages/**/src --fix",
