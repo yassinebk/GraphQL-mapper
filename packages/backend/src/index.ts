@@ -1,4 +1,3 @@
-import type { DefineAPI, SDK } from "caido:plugin";
 import type {
   ExtractionCounts,
   ExtractionOptions,
@@ -12,19 +11,24 @@ import type {
   RequestSummary,
   Result,
 } from "@graphql-mapper/shared";
-import { err, ok } from "./utils/helpers";
-import { extractInScopeRequests, extractRequestsById } from "./extractors/request-extractor";
+import type { DefineAPI, SDK } from "caido:plugin";
+
+import {
+  extractInScopeRequests,
+  extractRequestsById,
+} from "./extractors/request-extractor";
 import { PassiveScanner } from "./services/passive-scanner";
 import { emptyCounts } from "./services/state-manager";
+import { err, ok } from "./utils/helpers";
 
 let currentStatus: ExtractionStatus = {
   state: "idle",
   counts: emptyCounts(),
 };
 
-let currentModel: GraphQLModel | null = null;
+let currentModel: GraphQLModel | undefined = undefined;
 
-let sdkInstance: SDK | null = null;
+let sdkInstance: SDK | undefined = undefined;
 
 const passiveScanner = new PassiveScanner();
 
@@ -44,7 +48,7 @@ const getModel = () => {
 
 const getRequestDetails = async (
   sdk: SDK,
-  requestId: string
+  requestId: string,
 ): Promise<Result<RequestDetails>> => {
   const entry = await sdk.requests.get(requestId);
   if (!entry) {
@@ -64,7 +68,7 @@ const getRequestDetails = async (
 
 const extractInScopeRequestsHandler = async (
   sdk: SDK,
-  options?: ExtractionOptions
+  options?: ExtractionOptions,
 ): Promise<Result<ExtractionStatus>> => {
   if (currentStatus.state === "running") {
     return err("Extraction already in progress");
@@ -82,7 +86,8 @@ const extractInScopeRequestsHandler = async (
     currentStatus = result.value.status;
     currentModel = result.value.model;
     // Emit event
-    if (sdkInstance) {
+    if (sdkInstance !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (sdkInstance.api as any).send("graphql-mapper.data-changed", {});
     }
     return ok(currentStatus);
@@ -100,7 +105,7 @@ const extractInScopeRequestsHandler = async (
 
 const extractRequestsByIdHandler = async (
   sdk: SDK,
-  options: { requestIds: string[] }
+  options: { requestIds: string[] },
 ): Promise<Result<ExtractionStatus>> => {
   if (currentStatus.state === "running") {
     return err("Extraction already in progress");
@@ -118,7 +123,8 @@ const extractRequestsByIdHandler = async (
     currentStatus = result.value.status;
     currentModel = result.value.model;
     // Emit event
-    if (sdkInstance) {
+    if (sdkInstance !== undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (sdkInstance.api as any).send("graphql-mapper.data-changed", {});
     }
     return ok(currentStatus);
@@ -167,7 +173,9 @@ export function init(sdk: SDK<API>) {
   sdk.api.register("getExtractionStatus", getExtractionStatus);
   sdk.api.register("getModel", getModel);
   sdk.api.register("getRequestDetails", getRequestDetails);
-  sdk.api.register("setPassiveScan", (sdk, enabled: boolean) => passiveScanner.setEnabled(enabled));
+  sdk.api.register("setPassiveScan", (sdk, enabled: boolean) =>
+    passiveScanner.setEnabled(enabled),
+  );
   sdk.api.register("getPassiveScanStatus", (sdk) => passiveScanner.getStatus());
 
   // Register response interceptor for passive scanning
@@ -178,10 +186,11 @@ export function init(sdk: SDK<API>) {
       response,
       currentModel,
       () => {
-        if (sdkInstance) {
+        if (sdkInstance !== undefined) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (sdkInstance.api as any).send("graphql-mapper.data-changed", {});
         }
-      }
+      },
     );
   });
 

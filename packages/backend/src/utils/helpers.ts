@@ -1,7 +1,10 @@
 import type { Result } from "@graphql-mapper/shared";
 
 export const ok = <T>(value: T): Result<T> => ({ kind: "Ok", value });
-export const err = (message: string): Result<never> => ({ kind: "Error", error: message });
+export const err = (message: string): Result<never> => ({
+  kind: "Error",
+  error: message,
+});
 
 export const hashString = (value: string) => {
   let hash = 0;
@@ -13,7 +16,7 @@ export const hashString = (value: string) => {
 };
 
 export const previewText = (value: string | undefined, limit = 300) => {
-  if (!value) {
+  if (value === undefined || value.length === 0) {
     return undefined;
   }
   if (value.length <= limit) {
@@ -24,7 +27,8 @@ export const previewText = (value: string | undefined, limit = 300) => {
 
 export const extractRawBody = (rawText: string) => {
   const separatorIndex = rawText.indexOf("\r\n\r\n");
-  const headerEndIndex = separatorIndex === -1 ? rawText.indexOf("\n\n") : separatorIndex;
+  const headerEndIndex =
+    separatorIndex === -1 ? rawText.indexOf("\n\n") : separatorIndex;
   if (headerEndIndex === -1) {
     return "";
   }

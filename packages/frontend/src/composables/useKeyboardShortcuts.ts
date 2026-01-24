@@ -1,6 +1,6 @@
 import { onMounted, onUnmounted } from "vue";
 
-export interface KeyboardShortcut {
+interface KeyboardShortcut {
   key: string;
   ctrl?: boolean;
   meta?: boolean;
@@ -13,10 +13,30 @@ export interface KeyboardShortcut {
 export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
   const handleKeyDown = (event: KeyboardEvent) => {
     for (const shortcut of shortcuts) {
-      const ctrlMatch = shortcut.ctrl ? event.ctrlKey : !event.ctrlKey;
-      const metaMatch = shortcut.meta ? event.metaKey : !event.metaKey;
-      const shiftMatch = shortcut.shift ? event.shiftKey : !event.shiftKey;
-      const altMatch = shortcut.alt ? event.altKey : !event.altKey;
+      const ctrlMatch =
+        shortcut.ctrl !== undefined
+          ? shortcut.ctrl
+            ? event.ctrlKey
+            : !event.ctrlKey
+          : !event.ctrlKey;
+      const metaMatch =
+        shortcut.meta !== undefined
+          ? shortcut.meta
+            ? event.metaKey
+            : !event.metaKey
+          : !event.metaKey;
+      const shiftMatch =
+        shortcut.shift !== undefined
+          ? shortcut.shift
+            ? event.shiftKey
+            : !event.shiftKey
+          : !event.shiftKey;
+      const altMatch =
+        shortcut.alt !== undefined
+          ? shortcut.alt
+            ? event.altKey
+            : !event.altKey
+          : !event.altKey;
       const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase();
 
       if (keyMatch && ctrlMatch && metaMatch && shiftMatch && altMatch) {

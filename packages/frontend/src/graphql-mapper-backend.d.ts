@@ -1,4 +1,4 @@
-declare module 'graphql-mapper-backend' {
+declare module "graphql-mapper-backend" {
   export type Result<T> =
     | { kind: "Ok"; value: T }
     | { kind: "Error"; error: string };
@@ -82,6 +82,9 @@ declare module 'graphql-mapper-backend' {
     getRequestDetails: (requestId: string) => Promise<Result<RequestDetails>>;
     setPassiveScan: (enabled: boolean) => Promise<Result<PassiveScanStatus>>;
     getPassiveScanStatus: () => Promise<Result<PassiveScanStatus>>;
-    onEvent: (event: "graphql-mapper.data-changed", callback: () => void) => void;
+    onEvent: (
+      event: "graphql-mapper.data-changed",
+      callback: () => void,
+    ) => void;
   };
 }

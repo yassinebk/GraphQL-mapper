@@ -44,7 +44,10 @@ declare module "graphql" {
     selections: SelectionNode[];
   };
 
-  export type SelectionNode = FieldNode | InlineFragmentNode | FragmentSpreadNode;
+  export type SelectionNode =
+    | FieldNode
+    | InlineFragmentNode
+    | FragmentSpreadNode;
 
   export type FieldNode = {
     kind: "Field";

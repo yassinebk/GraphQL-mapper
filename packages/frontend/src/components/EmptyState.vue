@@ -14,8 +14,12 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex flex-col items-center justify-center text-center p-8 h-full min-h-[280px]">
-    <div class="w-16 h-16 rounded-full bg-surface-800 flex items-center justify-center mb-6 text-primary-400 border border-surface-700">
+  <div
+    class="flex flex-col items-center justify-center text-center p-8 h-full min-h-[280px]"
+  >
+    <div
+      class="w-16 h-16 rounded-full bg-surface-800 flex items-center justify-center mb-6 text-primary-400 border border-surface-700"
+    >
       <i :class="icon || 'fas fa-inbox'" class="text-2xl" />
     </div>
     <h3 class="text-lg font-semibold text-surface-200 mb-2">{{ title }}</h3>

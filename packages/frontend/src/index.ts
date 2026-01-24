@@ -62,7 +62,7 @@ export const init = (sdk: FrontendSDK) => {
 
       sdk.window.showToast(
         `Extracted ${result.value.counts.graphql} GraphQL requests from ${result.value.counts.scanned} in-scope.`,
-        { variant: "success" }
+        { variant: "success" },
       );
 
       sdk.navigation.goTo("/graphql-mapper");
@@ -87,7 +87,7 @@ export const init = (sdk: FrontendSDK) => {
           "Select request rows or a response to extract GraphQL data.",
           {
             variant: "warning",
-          }
+          },
         );
         return;
       }
@@ -100,7 +100,7 @@ export const init = (sdk: FrontendSDK) => {
 
       sdk.window.showToast(
         `Extracted ${result.value.counts.graphql} GraphQL requests from ${ids.length} selected.`,
-        { variant: "success" }
+        { variant: "success" },
       );
 
       sdk.navigation.goTo("/graphql-mapper");

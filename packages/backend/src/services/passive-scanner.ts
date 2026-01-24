@@ -1,21 +1,30 @@
+import type {
+  GraphQLModel,
+  RequestSummary,
+  Result,
+} from "@graphql-mapper/shared";
 import type { SDK } from "caido:plugin";
 import type { Request, Response } from "caido:utils";
-import type { RequestSummary, Result } from "@graphql-mapper/shared";
-import { ok } from "../utils/helpers";
-import { parseGraphQLRequest, parseOperations, parseResponseJson } from "../parsers/graphql-parser";
-import { collectResponseFieldTypes } from "../utils/type-inference";
+
+import {
+  parseGraphQLRequest,
+  parseOperations,
+  parseResponseJson,
+} from "../parsers/graphql-parser";
 import {
   createOperationState,
   emptyCounts,
+  type OperationState,
   operationStateFromSummary,
   signatureForOperation,
   updateOperationState,
-  type OperationState,
 } from "../services/state-manager";
+import { ok } from "../utils/helpers";
+import { collectResponseFieldTypes } from "../utils/type-inference";
 
 export class PassiveScanner {
   private enabled = false;
-  private sdkInstance: SDK | null = null;
+  private sdkInstance: SDK | undefined = undefined;
 
   setSDK(sdk: SDK) {
     this.sdkInstance = sdk;
@@ -23,8 +32,10 @@ export class PassiveScanner {
 
   setEnabled(enabled: boolean): Result<{ enabled: boolean }> {
     this.enabled = enabled;
-    if (this.sdkInstance) {
-      this.sdkInstance.console.log(`[GraphQL mapper] Passive scan ${enabled ? 'enabled' : 'disabled'}`);
+    if (this.sdkInstance !== undefined) {
+      this.sdkInstance.console.log(
+        `[GraphQL mapper] Passive scan ${enabled ? "enabled" : "disabled"}`,
+      );
     }
     return ok({ enabled: this.enabled });
   }
@@ -37,13 +48,14 @@ export class PassiveScanner {
     return this.enabled;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async processRequest(
     sdk: SDK,
     request: Request,
     response: Response | undefined,
-    currentModel: any,
-    emitDataChange: () => void
-  ): Promise<any> {
+    currentModel: GraphQLModel | undefined,
+    emitDataChange: () => void,
+  ): Promise<GraphQLModel | undefined> {
     if (!this.enabled) {
       return currentModel;
     }
@@ -64,7 +76,7 @@ export class PassiveScanner {
       const operations = new Map<string, OperationState>();
       const requestSummaries = new Map<string, RequestSummary>();
 
-      if (currentModel) {
+      if (currentModel !== undefined) {
         for (const summary of currentModel.operations) {
           operations.set(summary.signature, operationStateFromSummary(summary));
         }
@@ -92,7 +104,7 @@ export class PassiveScanner {
         operationsForRequest = parseOperations(parsedRequest.payload.query);
       } catch (error) {
         sdk.console.error(
-          `[GraphQL mapper] Failed to parse GraphQL request ${requestId}: ${String(error)}`
+          `[GraphQL mapper] Failed to parse GraphQL request ${requestId}: ${String(error)}`,
         );
         return currentModel;
       }
@@ -102,14 +114,15 @@ export class PassiveScanner {
       }
 
       const responseData = parseResponseJson(response);
-      const responseTypes = responseData
-        ? collectResponseFieldTypes(responseData)
-        : undefined;
+      const responseTypes =
+        responseData !== undefined
+          ? collectResponseFieldTypes(responseData)
+          : undefined;
 
       for (const operation of operationsForRequest) {
         const signature = signatureForOperation(operation);
         const existing = operations.get(signature);
-        if (!existing) {
+        if (existing === undefined) {
           const state = createOperationState(operation, requestId);
           if (responseTypes) {
             updateOperationState(state, requestId, responseTypes);
@@ -135,13 +148,16 @@ export class PassiveScanner {
             variables: state.variables,
             fields: state.fieldPaths.map((path) => ({
               path,
-              inferredType: Array.from(state.fieldTypes.get(path) ?? []).sort().join(" | ") || undefined,
+              inferredType:
+                Array.from(state.fieldTypes.get(path) ?? [])
+                  .sort()
+                  .join(" | ") || undefined,
             })),
             requestIds: Array.from(state.requestIds),
           }))
           .sort((left, right) => left.name.localeCompare(right.name)),
         requests: Array.from(requestSummaries.values()).sort((left, right) =>
-          left.createdAt.localeCompare(right.createdAt)
+          left.createdAt.localeCompare(right.createdAt),
         ),
         counts: newCounts,
         updatedAt,
@@ -150,13 +166,13 @@ export class PassiveScanner {
       emitDataChange();
 
       sdk.console.debug(
-        `[GraphQL mapper] Passive scan processed GraphQL request: ${request.getMethod()} ${request.getUrl()}`
+        `[GraphQL mapper] Passive scan processed GraphQL request: ${request.getMethod()} ${request.getUrl()}`,
       );
 
       return updatedModel;
     } catch (error) {
       sdk.console.error(
-        `[GraphQL mapper] Passive scan error: ${String(error)}`
+        `[GraphQL mapper] Passive scan error: ${String(error)}`,
       );
       return currentModel;
     }

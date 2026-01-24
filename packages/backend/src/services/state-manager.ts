@@ -7,6 +7,7 @@ import type {
   OperationVariable,
   RequestSummary,
 } from "@graphql-mapper/shared";
+
 import { hashString } from "../utils/helpers";
 import { formatFieldTypes, mergeFieldTypes } from "../utils/type-inference";
 
@@ -40,7 +41,7 @@ export const signatureForOperation = (operation: {
   return `${operation.kind}|${operation.name}|${variablesSignature}|${operation.fieldPaths.join(",")}`;
 };
 
-export const buildOperationSummary = (state: OperationState): OperationSummary => {
+const buildOperationSummary = (state: OperationState): OperationSummary => {
   const fields: OperationField[] = state.fieldPaths.map((path) => ({
     path,
     inferredType: formatFieldTypes(state.fieldTypes.get(path)),
@@ -63,7 +64,7 @@ export const createOperationState = (
     variables: OperationVariable[];
     fieldPaths: string[];
   },
-  requestId: string
+  requestId: string,
 ): OperationState => {
   const signature = signatureForOperation(operation);
   return {
@@ -81,7 +82,7 @@ export const createOperationState = (
 export const updateOperationState = (
   state: OperationState,
   requestId: string,
-  responseTypes?: Map<string, Set<string>>
+  responseTypes?: Map<string, Set<string>>,
 ) => {
   state.requestIds.add(requestId);
   if (responseTypes) {
@@ -92,7 +93,7 @@ export const updateOperationState = (
 const fieldTypesFromSummary = (fields: OperationField[]) => {
   const map = new Map<string, Set<string>>();
   for (const field of fields) {
-    if (!field.inferredType) {
+    if (field.inferredType === undefined || field.inferredType.length === 0) {
       continue;
     }
     const types = field.inferredType
@@ -107,7 +108,9 @@ const fieldTypesFromSummary = (fields: OperationField[]) => {
   return map;
 };
 
-export const operationStateFromSummary = (summary: OperationSummary): OperationState => {
+export const operationStateFromSummary = (
+  summary: OperationSummary,
+): OperationState => {
   return {
     id: summary.id,
     name: summary.name,
@@ -123,14 +126,14 @@ export const operationStateFromSummary = (summary: OperationSummary): OperationS
 export const buildModel = (
   operations: Map<string, OperationState>,
   requestSummaries: Map<string, RequestSummary>,
-  counts: ExtractionCounts
+  counts: ExtractionCounts,
 ): GraphQLModel => {
   return {
     operations: Array.from(operations.values())
       .map(buildOperationSummary)
       .sort((left, right) => left.name.localeCompare(right.name)),
     requests: Array.from(requestSummaries.values()).sort((left, right) =>
-      left.createdAt.localeCompare(right.createdAt)
+      left.createdAt.localeCompare(right.createdAt),
     ),
     counts,
     updatedAt: new Date().toISOString(),

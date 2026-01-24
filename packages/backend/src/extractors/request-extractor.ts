@@ -1,32 +1,38 @@
-import type { SDK } from "caido:plugin";
-import type { Cursor } from "caido:utils";
 import type {
   ExtractionOptions,
   ExtractionStatus,
+  GraphQLModel,
   RequestSummary,
   Result,
 } from "@graphql-mapper/shared";
-import { err, ok } from "../utils/helpers";
-import { parseGraphQLRequest, parseOperations, parseResponseJson } from "../parsers/graphql-parser";
-import { collectResponseFieldTypes } from "../utils/type-inference";
+import type { SDK } from "caido:plugin";
+import type { Cursor } from "caido:utils";
+
+import {
+  parseGraphQLRequest,
+  parseOperations,
+  parseResponseJson,
+} from "../parsers/graphql-parser";
 import {
   buildModel,
   createOperationState,
   emptyCounts,
+  type OperationState,
   operationStateFromSummary,
   signatureForOperation,
   updateOperationState,
-  type OperationState,
 } from "../services/state-manager";
+import { err, ok } from "../utils/helpers";
+import { collectResponseFieldTypes } from "../utils/type-inference";
 
 const DEFAULT_PAGE_SIZE = 500;
 const DEFAULT_MAX_REQUESTS = 5000;
 
 export const extractInScopeRequests = async (
   sdk: SDK,
-  currentModel: any,
-  options?: ExtractionOptions
-): Promise<Result<{ status: ExtractionStatus; model: any }>> => {
+  currentModel: GraphQLModel | undefined,
+  options?: ExtractionOptions,
+): Promise<Result<{ status: ExtractionStatus; model: GraphQLModel }>> => {
   const pageSize = options?.pageSize ?? DEFAULT_PAGE_SIZE;
   const maxRequests = options?.maxRequests ?? DEFAULT_MAX_REQUESTS;
   const startedAt = new Date().toISOString();
@@ -62,7 +68,9 @@ export const extractInScopeRequests = async (
         }
         currentStatus.counts.scanned += 1;
         const inScope = sdk.requests.inScope(item.request);
-        sdk.console.debug(`Scanned request ${item.request.getId()}: inScope=${inScope}`);
+        sdk.console.debug(
+          `Scanned request ${item.request.getId()}: inScope=${inScope}`,
+        );
         if (!inScope) {
           continue;
         }
@@ -70,17 +78,17 @@ export const extractInScopeRequests = async (
 
         const parsedRequest = parseGraphQLRequest(item.request);
         if (!parsedRequest.payload) {
-          if (parsedRequest.debug?.shouldLog) {
+          if (parsedRequest.debug?.shouldLog === true) {
             sdk.console.log(
               [
                 "[GraphQL mapper] Skipped request:",
                 `${parsedRequest.debug.method} ${parsedRequest.debug.url}`,
                 `reason=${parsedRequest.debug.reason}`,
-                `contentType=${parsedRequest.debug.contentType || "(none)"}`,
-                `bodyPreview=${parsedRequest.debug.bodyPreview || "(none)"}`,
-                `rawBodyPreview=${parsedRequest.debug.rawBodyPreview || "(none)"}`,
-                `queryPreview=${parsedRequest.debug.queryPreview || "(none)"}`,
-              ].join(" ")
+                `contentType=${parsedRequest.debug.contentType ?? "(none)"}`,
+                `bodyPreview=${parsedRequest.debug.bodyPreview ?? "(none)"}`,
+                `rawBodyPreview=${parsedRequest.debug.rawBodyPreview ?? "(none)"}`,
+                `queryPreview=${parsedRequest.debug.queryPreview ?? "(none)"}`,
+              ].join(" "),
             );
           }
           continue;
@@ -105,7 +113,7 @@ export const extractInScopeRequests = async (
           operationsForRequest = parseOperations(parsedRequest.payload.query);
         } catch (error) {
           sdk.console.error(
-            `Failed to parse GraphQL request ${requestId}: ${String(error)}`
+            `Failed to parse GraphQL request ${requestId}: ${String(error)}`,
           );
           continue;
         }
@@ -115,16 +123,17 @@ export const extractInScopeRequests = async (
         }
 
         const responseData = parseResponseJson(item.response);
-        const responseTypes = responseData
-          ? collectResponseFieldTypes(responseData)
-          : undefined;
+        const responseTypes =
+          responseData !== undefined
+            ? collectResponseFieldTypes(responseData)
+            : undefined;
 
         for (const operation of operationsForRequest) {
           const signature = signatureForOperation(operation);
           const existing = operations.get(signature);
-          if (!existing) {
+          if (existing === undefined) {
             const state = createOperationState(operation, requestId);
-            if (responseTypes) {
+            if (responseTypes !== undefined) {
               updateOperationState(state, requestId, responseTypes);
             }
             operations.set(signature, state);
@@ -142,7 +151,11 @@ export const extractInScopeRequests = async (
       }
     }
 
-    const model = buildModel(operations, requestSummaries, currentStatus.counts);
+    const model = buildModel(
+      operations,
+      requestSummaries,
+      currentStatus.counts,
+    );
 
     return ok({
       status: {
@@ -160,10 +173,10 @@ export const extractInScopeRequests = async (
 
 export const extractRequestsById = async (
   sdk: SDK,
-  currentModel: any,
-  options: { requestIds: string[] }
-): Promise<Result<{ status: ExtractionStatus; model: any }>> => {
-  if (!options.requestIds || options.requestIds.length === 0) {
+  currentModel: GraphQLModel | undefined,
+  options: { requestIds: string[] },
+): Promise<Result<{ status: ExtractionStatus; model: GraphQLModel }>> => {
+  if (options.requestIds === undefined || options.requestIds.length === 0) {
     return err("No requests selected");
   }
 
@@ -201,17 +214,17 @@ export const extractRequestsById = async (
 
       const parsedRequest = parseGraphQLRequest(entry.request);
       if (!parsedRequest.payload) {
-        if (parsedRequest.debug?.shouldLog) {
+        if (parsedRequest.debug?.shouldLog === true) {
           sdk.console.log(
             [
               "[GraphQL mapper] Skipped request:",
               `${parsedRequest.debug.method} ${parsedRequest.debug.url}`,
               `reason=${parsedRequest.debug.reason}`,
-              `contentType=${parsedRequest.debug.contentType || "(none)"}`,
-              `bodyPreview=${parsedRequest.debug.bodyPreview || "(none)"}`,
-              `rawBodyPreview=${parsedRequest.debug.rawBodyPreview || "(none)"}`,
-              `queryPreview=${parsedRequest.debug.queryPreview || "(none)"}`,
-            ].join(" ")
+              `contentType=${parsedRequest.debug.contentType ?? "(none)"}`,
+              `bodyPreview=${parsedRequest.debug.bodyPreview ?? "(none)"}`,
+              `rawBodyPreview=${parsedRequest.debug.rawBodyPreview ?? "(none)"}`,
+              `queryPreview=${parsedRequest.debug.queryPreview ?? "(none)"}`,
+            ].join(" "),
           );
         }
         continue;
@@ -237,7 +250,7 @@ export const extractRequestsById = async (
         operationsForRequest = parseOperations(parsedRequest.payload.query);
       } catch (error) {
         sdk.console.error(
-          `Failed to parse GraphQL request ${requestId}: ${String(error)}`
+          `Failed to parse GraphQL request ${requestId}: ${String(error)}`,
         );
         continue;
       }
@@ -247,14 +260,15 @@ export const extractRequestsById = async (
       }
 
       const responseData = parseResponseJson(entry.response);
-      const responseTypes = responseData
-        ? collectResponseFieldTypes(responseData)
-        : undefined;
+      const responseTypes =
+        responseData !== undefined
+          ? collectResponseFieldTypes(responseData)
+          : undefined;
 
       for (const operation of operationsForRequest) {
         const signature = signatureForOperation(operation);
         const existing = operations.get(signature);
-        if (!existing) {
+        if (existing === undefined) {
           const state = createOperationState(operation, requestId);
           if (responseTypes) {
             updateOperationState(state, requestId, responseTypes);
@@ -269,7 +283,11 @@ export const extractRequestsById = async (
 
     const updatedAt = new Date().toISOString();
     currentStatus.counts.deduped = operations.size;
-    const model = buildModel(operations, requestSummaries, currentStatus.counts);
+    const model = buildModel(
+      operations,
+      requestSummaries,
+      currentStatus.counts,
+    );
 
     return ok({
       status: {

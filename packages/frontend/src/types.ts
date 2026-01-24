@@ -1,5 +1,4 @@
 import { type Caido } from "@caido/sdk-frontend";
-import type { API } from "graphql-mapper-backend";
 import type {
   ExtractionStatus,
   GraphQLModel,
@@ -8,6 +7,7 @@ import type {
   RequestSummary,
   Result,
 } from "@graphql-mapper/shared";
+import type { API } from "graphql-mapper-backend";
 
 export type FrontendSDK = Caido<API, Record<string, never>>;
 

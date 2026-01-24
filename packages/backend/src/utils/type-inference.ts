@@ -1,4 +1,4 @@
-export const inferJsonType = (value: unknown): string => {
+const inferJsonType = (value: unknown): string => {
   if (value === null) {
     return "null";
   }
@@ -13,17 +13,22 @@ export const inferJsonType = (value: unknown): string => {
 
 export const collectResponseFieldTypes = (
   value: unknown,
-  prefix = ""
+  prefix = "",
 ): Map<string, Set<string>> => {
   const map = new Map<string, Set<string>>();
   const visit = (data: unknown, path: string) => {
     const type = inferJsonType(data);
-    if (path) {
+    if (path.length > 0) {
       const existing = map.get(path) ?? new Set<string>();
       existing.add(type);
       map.set(path, existing);
     }
-    if (data && typeof data === "object" && !Array.isArray(data)) {
+    if (
+      data !== null &&
+      data !== undefined &&
+      typeof data === "object" &&
+      !Array.isArray(data)
+    ) {
       for (const [key, child] of Object.entries(data)) {
         const nextPath = path ? `${path}.${key}` : key;
         visit(child, nextPath);
@@ -41,7 +46,7 @@ export const collectResponseFieldTypes = (
 
 export const mergeFieldTypes = (
   target: Map<string, Set<string>>,
-  source: Map<string, Set<string>>
+  source: Map<string, Set<string>>,
 ) => {
   for (const [path, types] of source.entries()) {
     const entry = target.get(path) ?? new Set<string>();

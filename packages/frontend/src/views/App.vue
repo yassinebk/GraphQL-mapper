@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import Button from "primevue/button";
+import InputSwitch from "primevue/inputswitch";
 import ProgressBar from "primevue/progressbar";
+import Splitter from "primevue/splitter";
+import SplitterPanel from "primevue/splitterpanel";
 import Tab from "primevue/tab";
 import TabList from "primevue/tablist";
 import TabPanel from "primevue/tabpanel";
 import TabPanels from "primevue/tabpanels";
 import Tabs from "primevue/tabs";
 import Tag from "primevue/tag";
-import Splitter from "primevue/splitter";
-import SplitterPanel from "primevue/splitterpanel";
-import InputSwitch from "primevue/inputswitch";
 import { computed, onMounted, ref, watch } from "vue";
 
 import EmptyState from "@/components/EmptyState.vue";
@@ -33,49 +33,52 @@ import type {
 
 const sdk = useSDK();
 
-const status = ref<ExtractionStatus | null>(null);
-const model = ref<GraphQLModel | null>(null);
-const selectedOperationId = ref<string | null>(null);
-const selectedRequestId = ref<string | null>(null);
-const requestDetails = ref<RequestDetails | null>(null);
+const status = ref<ExtractionStatus | undefined>(undefined);
+const model = ref<GraphQLModel | undefined>(undefined);
+const selectedOperationId = ref<string | undefined>(undefined);
+const selectedRequestId = ref<string | undefined>(undefined);
+const requestDetails = ref<RequestDetails | undefined>(undefined);
 const filterText = ref("");
 const filterKind = ref<"all" | "query" | "mutation" | "subscription">("all");
 const activeTab = ref("overview");
 const passiveScanEnabled = ref(false);
 
-const requestEditorContainer = ref<HTMLDivElement | null>(null);
-const responseEditorContainer = ref<HTMLDivElement | null>(null);
-const requestEditor = ref<ReturnType<typeof sdk.ui.httpRequestEditor> | null>(
-  null
-);
-const responseEditor = ref<ReturnType<typeof sdk.ui.httpResponseEditor> | null>(
-  null
-);
+const requestEditorContainer = ref<HTMLDivElement | undefined>(undefined);
+const responseEditorContainer = ref<HTMLDivElement | undefined>(undefined);
+const requestEditor = ref<
+  ReturnType<typeof sdk.ui.httpRequestEditor> | undefined
+>(undefined);
+const responseEditor = ref<
+  ReturnType<typeof sdk.ui.httpResponseEditor> | undefined
+>(undefined);
 
 const isExtracting = computed(() => status.value?.state === "running");
 const hasModel = computed(() => (model.value?.operations.length ?? 0) > 0);
 
 const filteredOperations = computed(() => {
   const operations = model.value?.operations ?? [];
-  const filteredOperations =operations.filter((operation: OperationSummary) => {
-    const matchesKind =
-      filterKind.value === "all" || operation.kind.toLowerCase() === filterKind.value;
+  const filteredOperations = operations.filter(
+    (operation: OperationSummary) => {
+      const matchesKind =
+        filterKind.value === "all" ||
+        operation.kind.toLowerCase() === filterKind.value;
 
-    const matchesText =
-      filterText.value.trim().length === 0 ||
-      operation.name.toLowerCase().includes(filterText.value.toLowerCase());
-    return matchesKind && matchesText;
-  });
+      const matchesText =
+        filterText.value.trim().length === 0 ||
+        operation.name.toLowerCase().includes(filterText.value.toLowerCase());
+      return matchesKind && matchesText;
+    },
+  );
 
   return filteredOperations;
 });
 
 const selectedOperation = computed(() => {
-  if (!selectedOperationId.value || !model.value) {
-    return null;
+  if (selectedOperationId.value === undefined || model.value === undefined) {
+    return undefined;
   }
   return model.value.operations.find(
-    (operation: OperationSummary) => operation.id === selectedOperationId.value
+    (operation: OperationSummary) => operation.id === selectedOperationId.value,
   );
 });
 
@@ -93,34 +96,39 @@ const selectedRequests = computed(() => {
   }
   return selectedOperation.value.requestIds
     .map((id: string) => requestLookup.value.get(id))
-    .filter((entry: RequestSummary | undefined): entry is RequestSummary => Boolean(entry));
+    .filter((entry: RequestSummary | undefined): entry is RequestSummary =>
+      Boolean(entry),
+    );
 });
 
 const showToastError = (message: string) => {
   sdk.window.showToast(message, { variant: "error" });
 };
 
-const showToast = (message: string, variant: "success" | "error" = "success") => {
+const showToast = (
+  message: string,
+  variant: "success" | "error" = "success",
+) => {
   sdk.window.showToast(message, { variant });
 };
 
-const unwrapResult = <T,>(result: Result<T>): T | null => {
+const unwrapResult = <T,>(result: Result<T>): T | undefined => {
   if (result.kind === "Error") {
     showToastError(result.error);
-    return null;
+    return undefined;
   }
   return result.value;
 };
 
 const setEditorText = (
-  editor: ReturnType<typeof sdk.ui.httpRequestEditor> | null,
-  text: string
+  editor: ReturnType<typeof sdk.ui.httpRequestEditor> | undefined,
+  text: string,
 ) => {
-  if (!editor) {
+  if (editor === undefined) {
     return;
   }
   const view = editor.getEditorView?.();
-  if (!view) {
+  if (view === undefined) {
     return;
   }
   view.dispatch({
@@ -133,14 +141,14 @@ const setEditorText = (
 };
 
 const setResponseText = (
-  editor: ReturnType<typeof sdk.ui.httpResponseEditor> | null,
-  text: string
+  editor: ReturnType<typeof sdk.ui.httpResponseEditor> | undefined,
+  text: string,
 ) => {
-  if (!editor) {
+  if (editor === undefined) {
     return;
   }
   const view = editor.getEditorView?.();
-  if (!view) {
+  if (view === undefined) {
     return;
   }
   view.dispatch({
@@ -201,7 +209,7 @@ const loadRequestDetails = async (requestId: string) => {
 
 const selectOperation = (operation: OperationSummary) => {
   selectedOperationId.value = operation.id;
-  const firstRequestId = operation.requestIds[0] ?? null;
+  const firstRequestId = operation.requestIds[0] ?? undefined;
   selectedRequestId.value = firstRequestId;
 };
 
@@ -217,27 +225,30 @@ const openRequestDetails = (requestId: string) => {
 const navigateOperations = (direction: "next" | "prev") => {
   const operations = filteredOperations.value;
   if (operations.length === 0) return;
-  
+
   const currentIndex = operations.findIndex(
-    (op: OperationSummary) => op.id === selectedOperationId.value
+    (op: OperationSummary) => op.id === selectedOperationId.value,
   );
-  
+
   if (currentIndex === -1) {
-    selectedOperationId.value = operations[0]?.id ?? null;
+    selectedOperationId.value = operations[0]?.id ?? undefined;
     return;
   }
-  
+
   if (direction === "next") {
     const nextIndex = (currentIndex + 1) % operations.length;
     selectOperation(operations[nextIndex]!);
   } else {
-    const prevIndex = currentIndex === 0 ? operations.length - 1 : currentIndex - 1;
+    const prevIndex =
+      currentIndex === 0 ? operations.length - 1 : currentIndex - 1;
     selectOperation(operations[prevIndex]!);
   }
 };
 
 const focusSearch = () => {
-  const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
+  const searchInput = document.querySelector(
+    'input[placeholder*="Search"]',
+  ) as HTMLInputElement;
   searchInput?.focus();
 };
 
@@ -261,32 +272,32 @@ useKeyboardShortcuts([
 ]);
 
 watch(selectedOperation, (operation) => {
-  if (!operation) {
-    selectedRequestId.value = null;
-    requestDetails.value = null;
+  if (operation === undefined) {
+    selectedRequestId.value = undefined;
+    requestDetails.value = undefined;
     return;
   }
-  selectedRequestId.value = operation.requestIds[0] ?? null;
+  selectedRequestId.value = operation.requestIds[0] ?? undefined;
 });
 
-
-
 watch(selectedRequestId, async (requestId) => {
-  if (!requestId) {
-    requestDetails.value = null;
+  if (requestId === undefined) {
+    requestDetails.value = undefined;
     return;
   }
   await loadRequestDetails(requestId);
 });
 
 watch(requestDetails, (details) => {
-  if (!details) {
+  if (details === undefined) {
     return;
   }
   setEditorText(requestEditor.value, details.requestText);
   setResponseText(
     responseEditor.value,
-    details.responseText ?? "No response captured for this request."
+    details.responseText !== undefined
+      ? details.responseText
+      : "No response captured for this request.",
   );
 });
 
@@ -309,8 +320,8 @@ const togglePassiveScan = async () => {
   const resolved = unwrapResult(result);
   if (resolved) {
     showToast(
-      `Passive scan ${resolved.enabled ? 'enabled' : 'disabled'}`,
-      "success"
+      `Passive scan ${resolved.enabled ? "enabled" : "disabled"}`,
+      "success",
     );
   } else {
     // Revert on error
@@ -353,7 +364,7 @@ onMounted(async () => {
       await refreshData();
     }
   }, 2000);
-  
+
   // Cleanup on unmount
   return () => {
     clearInterval(pollInterval);
@@ -364,28 +375,35 @@ onMounted(async () => {
 <template>
   <div class="h-full w-full bg-surface-900 flex flex-col overflow-hidden">
     <!-- Top Header -->
-    <header class="h-14 border-b border-surface-700 bg-surface-800/80 backdrop-blur flex items-center justify-between px-4 shrink-0 z-10">
+    <header
+      class="h-14 border-b border-surface-700 bg-surface-800/80 backdrop-blur flex items-center justify-between px-4 shrink-0 z-10"
+    >
       <div class="flex items-center gap-3">
         <h1 class="text-lg font-semibold text-surface-0">GraphQL Mapper</h1>
-        <div v-if="status?.startedAt" class="text-xs text-surface-400 bg-surface-700/50 px-2 py-1 rounded">
-            Last: {{ status.startedAt }}
+        <div
+          v-if="status?.startedAt"
+          class="text-xs text-surface-400 bg-surface-700/50 px-2 py-1 rounded"
+        >
+          Last: {{ status.startedAt }}
         </div>
       </div>
       <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2 bg-surface-700/50 px-3 py-1.5 rounded">
-          <label for="passive-scan-toggle" class="text-xs text-surface-300 cursor-pointer">
+        <div
+          class="flex items-center gap-2 bg-surface-700/50 px-3 py-1.5 rounded"
+        >
+          <label
+            for="passive-scan-toggle"
+            class="text-xs text-surface-300 cursor-pointer"
+          >
             Passive Scan
           </label>
-          <InputSwitch
-            id="passive-scan-toggle"
-            v-model="passiveScanEnabled"
-          />
+          <InputSwitch id="passive-scan-toggle" v-model="passiveScanEnabled" />
         </div>
         <Tag
-            v-if="status?.state"
-            :value="status.state"
-            :severity="status.state === 'error' ? 'danger' : 'secondary'"
-            class="uppercase !text-[10px]"
+          v-if="status?.state"
+          :value="status.state"
+          :severity="status.state === 'error' ? 'danger' : 'secondary'"
+          class="uppercase !text-[10px]"
         />
         <Button
           :loading="isExtracting"
@@ -404,152 +422,209 @@ onMounted(async () => {
 
     <!-- Main Content Splitter -->
     <main class="flex-1 min-h-0 overflow-hidden relative">
-      <Splitter class="h-full border-none bg-transparent !overflow-hidden" stateKey="main-layout" stateStorage="local">
-        
+      <Splitter
+        class="h-full border-none bg-transparent !overflow-hidden"
+        state-key="main-layout"
+        state-storage="local"
+      >
         <!-- Sidebar: Operations List -->
-        <SplitterPanel :size="25" :minSize="20" class="flex flex-col bg-surface-800/30 border-r border-surface-700 overflow-hidden">
-            <div class="p-3 border-b border-surface-700 bg-surface-800/50 shrink-0">
-              <OperationSearch
-                v-model="filterText"
-                :filter-kind="filterKind"
-                :total-count="model?.operations.length ?? 0"
-                :filtered-count="filteredOperations.length"
-                @update:filter-kind="filterKind = $event"
+        <SplitterPanel
+          :size="25"
+          :min-size="20"
+          class="flex flex-col bg-surface-800/30 border-r border-surface-700 overflow-hidden"
+        >
+          <div
+            class="p-3 border-b border-surface-700 bg-surface-800/50 shrink-0"
+          >
+            <OperationSearch
+              v-model="filterText"
+              :filter-kind="filterKind"
+              :total-count="model?.operations.length ?? 0"
+              :filtered-count="filteredOperations.length"
+              @update:filter-kind="filterKind = $event"
+            />
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-2 min-h-0">
+            <div v-if="isExtracting" class="space-y-2">
+              <LoadingSkeleton type="card" :count="5" />
+            </div>
+
+            <div
+              v-else-if="!hasModel"
+              class="h-full flex flex-col items-center justify-center p-4"
+            >
+              <EmptyState
+                title="No operations"
+                description="Run extraction to start"
+                icon="fas fa-inbox"
+                action-label="Extract"
+                @action="refreshExtraction"
               />
             </div>
-            
-            <div class="flex-1 overflow-y-auto p-2 min-h-0">
-                <div v-if="isExtracting" class="space-y-2">
-                    <LoadingSkeleton type="card" :count="5" />
-                </div>
-                
-                <div v-else-if="!hasModel" class="h-full flex flex-col items-center justify-center p-4">
-                  <EmptyState
-                    title="No operations"
-                    description="Run extraction to start"
-                    icon="fas fa-inbox"
-                    action-label="Extract"
-                    @action="refreshExtraction"
-                  />
-                </div>
-                
-                <div v-else-if="filteredOperations.length === 0" class="h-full flex flex-col items-center justify-center p-4">
-                     <EmptyState
-                      title="No matches"
-                      description="Adjust filters"
-                      icon="fas fa-search"
-                    />
-                </div>
-                
-                <div v-else class="space-y-2 pb-4">
-                  <OperationCard
-                    v-for="operation in filteredOperations"
-                    :key="operation.id"
-                    :operation="operation"
-                    :is-active="operation.id === selectedOperationId"
-                    @select="selectOperation"
-                  />
-                </div>
+
+            <div
+              v-else-if="filteredOperations.length === 0"
+              class="h-full flex flex-col items-center justify-center p-4"
+            >
+              <EmptyState
+                title="No matches"
+                description="Adjust filters"
+                icon="fas fa-search"
+              />
             </div>
+
+            <div v-else class="space-y-2 pb-4">
+              <OperationCard
+                v-for="operation in filteredOperations"
+                :key="operation.id"
+                :operation="operation"
+                :is-active="operation.id === selectedOperationId"
+                @select="selectOperation"
+              />
+            </div>
+          </div>
         </SplitterPanel>
 
         <!-- Main Panel: Details -->
-        <SplitterPanel :size="75" :minSize="40" class="flex flex-col bg-surface-900 relative overflow-hidden">
-            <div v-if="selectedOperation" class="absolute inset-0 flex flex-col">
-                <Tabs v-model:value="activeTab" class="flex flex-col h-full">
-                    <!-- Operation Header -->
-                    <div class="bg-surface-800 border-b border-surface-700 px-6 pt-6 pb-0 shadow-sm shrink-0">
-                        <div class="flex items-start justify-between mb-6">
-                            <div class="flex-1 min-w-0 mr-4">
-                                <h2 class="text-xl font-bold text-surface-50 break-all mb-1">{{ selectedOperation.name }}</h2>
-                            </div>
-                            <div class="flex items-start gap-2 shrink-0">
-                                <ExportMenu
-                                    :operation="selectedOperation"
-                                    @toast="showToast"
-                                />
-                            </div>
-                        </div>
-                        
-                        <!-- PrimeVue Tabs -->
-                        <TabList class="!border-b-0 !p-0 gap-4">
-                            <Tab value="overview" class="!px-4 !py-3 !font-medium">Overview</Tab>
-                            <Tab value="requests" class="!px-4 !py-3 !font-medium">
-                                Requests <span class="bg-surface-700 text-surface-300 text-xs rounded px-1.5 ml-2">{{ selectedRequests.length }}</span>
-                            </Tab>
-                            <Tab value="raw" class="!px-4 !py-3 !font-medium">Raw HTTP</Tab>
-                        </TabList>
-                    </div>
-
-                    <!-- Tab Content -->
-                    <TabPanels class="flex-1 min-h-0 overflow-hidden bg-surface-900 !p-0">
-                        <!-- Overview Tab -->
-                        <TabPanel value="overview" class="h-full !p-0">
-                            <Splitter class="h-full border-none bg-transparent">
-                                <SplitterPanel :size="50" class="p-4 overflow-hidden">
-                                    <FieldList :operation="selectedOperation" />
-                                </SplitterPanel>
-                                <SplitterPanel :size="50" class="p-4 overflow-hidden">
-                                     <VariableList :operation="selectedOperation" />
-                                </SplitterPanel>
-                            </Splitter>
-                        </TabPanel>
-                        
-                        <!-- Requests Tab -->
-                        <TabPanel value="requests" class="h-full !p-4 overflow-y-auto">
-                            <div class="max-w-4xl mx-auto space-y-3">
-                                <RequestCard
-                                    v-for="request in selectedRequests"
-                                    :key="request.id"
-                                    :request="request"
-                                    :is-active="request.id === selectedRequestId"
-                                    @select="selectRequest"
-                                    @details="openRequestDetails"
-                                />
-                                <div v-if="selectedRequests.length === 0" class="mt-8">
-                                     <EmptyState
-                                        title="No requests found"
-                                        description="No captured requests match this operation."
-                                        icon="fas fa-inbox"
-                                    />
-                                </div>
-                            </div>
-                        </TabPanel>
-                        
-                        <!-- Raw HTTP Tab -->
-                        <TabPanel value="raw" class="h-full !p-4 overflow-hidden flex flex-col">
-                             <Splitter layout="vertical" class="h-full border-none bg-transparent">
-                                <SplitterPanel :size="50" class="flex flex-col pb-2">
-                                     <h3 class="text-sm font-bold text-surface-300 mb-2 px-1">Request</h3>
-                                     <div ref="requestEditorContainer" class="flex-1 border border-surface-700 rounded-lg overflow-hidden bg-surface-950" />
-                                </SplitterPanel>
-                                <SplitterPanel :size="50" class="flex flex-col pt-2">
-                                     <h3 class="text-sm font-bold text-surface-300 mb-2 px-1">Response</h3>
-                                     <div ref="responseEditorContainer" class="flex-1 border border-surface-700 rounded-lg overflow-hidden bg-surface-950" />
-                                </SplitterPanel>
-                             </Splitter>
-                        </TabPanel>
-                    </TabPanels>
-                </Tabs>
-            </div>
-            
-            <div v-else class="h-full flex items-center justify-center p-8 bg-surface-50/5 dark:bg-surface-900">
-                <div class="text-center opacity-40">
-                    <i class="fas fa-arrow-left text-4xl mb-4 block lg:hidden"></i>
-                    <i class="fas fa-mouse-pointer text-4xl mb-4 hidden lg:block mx-auto"></i>
-                    <h3 class="text-xl font-medium">Select an Operation</h3>
-                    <p class="mt-2 text-sm">Choose an operation from the sidebar to view details</p>
+        <SplitterPanel
+          :size="75"
+          :min-size="40"
+          class="flex flex-col bg-surface-900 relative overflow-hidden"
+        >
+          <div v-if="selectedOperation" class="absolute inset-0 flex flex-col">
+            <Tabs v-model:value="activeTab" class="flex flex-col h-full">
+              <!-- Operation Header -->
+              <div
+                class="bg-surface-800 border-b border-surface-700 px-6 pt-6 pb-0 shadow-sm shrink-0"
+              >
+                <div class="flex items-start justify-between mb-6">
+                  <div class="flex-1 min-w-0 mr-4">
+                    <h2
+                      class="text-xl font-bold text-surface-50 break-all mb-1"
+                    >
+                      {{ selectedOperation.name }}
+                    </h2>
+                  </div>
+                  <div class="flex items-start gap-2 shrink-0">
+                    <ExportMenu
+                      :operation="selectedOperation"
+                      @toast="showToast"
+                    />
+                  </div>
                 </div>
+
+                <!-- PrimeVue Tabs -->
+                <TabList class="!border-b-0 !p-0 gap-4">
+                  <Tab value="overview" class="!px-4 !py-3 !font-medium"
+                    >Overview</Tab
+                  >
+                  <Tab value="requests" class="!px-4 !py-3 !font-medium">
+                    Requests
+                    <span
+                      class="bg-surface-700 text-surface-300 text-xs rounded px-1.5 ml-2"
+                      >{{ selectedRequests.length }}</span
+                    >
+                  </Tab>
+                  <Tab value="raw" class="!px-4 !py-3 !font-medium"
+                    >Raw HTTP</Tab
+                  >
+                </TabList>
+              </div>
+
+              <!-- Tab Content -->
+              <TabPanels
+                class="flex-1 min-h-0 overflow-hidden bg-surface-900 !p-0"
+              >
+                <!-- Overview Tab -->
+                <TabPanel value="overview" class="h-full !p-0">
+                  <Splitter class="h-full border-none bg-transparent">
+                    <SplitterPanel :size="50" class="p-4 overflow-hidden">
+                      <FieldList :operation="selectedOperation" />
+                    </SplitterPanel>
+                    <SplitterPanel :size="50" class="p-4 overflow-hidden">
+                      <VariableList :operation="selectedOperation" />
+                    </SplitterPanel>
+                  </Splitter>
+                </TabPanel>
+
+                <!-- Requests Tab -->
+                <TabPanel value="requests" class="h-full !p-4 overflow-y-auto">
+                  <div class="max-w-4xl mx-auto space-y-3">
+                    <RequestCard
+                      v-for="request in selectedRequests"
+                      :key="request.id"
+                      :request="request"
+                      :is-active="request.id === selectedRequestId"
+                      @select="selectRequest"
+                      @details="openRequestDetails"
+                    />
+                    <div v-if="selectedRequests.length === 0" class="mt-8">
+                      <EmptyState
+                        title="No requests found"
+                        description="No captured requests match this operation."
+                        icon="fas fa-inbox"
+                      />
+                    </div>
+                  </div>
+                </TabPanel>
+
+                <!-- Raw HTTP Tab -->
+                <TabPanel
+                  value="raw"
+                  class="h-full !p-4 overflow-hidden flex flex-col"
+                >
+                  <Splitter
+                    layout="vertical"
+                    class="h-full border-none bg-transparent"
+                  >
+                    <SplitterPanel :size="50" class="flex flex-col pb-2">
+                      <h3 class="text-sm font-bold text-surface-300 mb-2 px-1">
+                        Request
+                      </h3>
+                      <div
+                        ref="requestEditorContainer"
+                        class="flex-1 border border-surface-700 rounded-lg overflow-hidden bg-surface-950"
+                      />
+                    </SplitterPanel>
+                    <SplitterPanel :size="50" class="flex flex-col pt-2">
+                      <h3 class="text-sm font-bold text-surface-300 mb-2 px-1">
+                        Response
+                      </h3>
+                      <div
+                        ref="responseEditorContainer"
+                        class="flex-1 border border-surface-700 rounded-lg overflow-hidden bg-surface-950"
+                      />
+                    </SplitterPanel>
+                  </Splitter>
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
+          </div>
+
+          <div
+            v-else
+            class="h-full flex items-center justify-center p-8 bg-surface-50/5 dark:bg-surface-900"
+          >
+            <div class="text-center opacity-40">
+              <i class="fas fa-arrow-left text-4xl mb-4 block lg:hidden"></i>
+              <i
+                class="fas fa-mouse-pointer text-4xl mb-4 hidden lg:block mx-auto"
+              ></i>
+              <h3 class="text-xl font-medium">Select an Operation</h3>
+              <p class="mt-2 text-sm">
+                Choose an operation from the sidebar to view details
+              </p>
             </div>
+          </div>
         </SplitterPanel>
       </Splitter>
     </main>
   </div>
 </template>
 
-
 <style>
 .cm-editor {
-    height: 100% !important;
+  height: 100% !important;
 }
 </style>
